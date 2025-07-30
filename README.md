@@ -54,3 +54,9 @@ cd vortext-ai-chat
 cp .env.example .env.local # Add your Gemini API Key
 pnpm install
 pnpm dev
+
+
+```
+
+## soon we are making it so that you have to pay to be able to use this
+
