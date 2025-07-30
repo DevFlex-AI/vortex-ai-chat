@@ -2,7 +2,7 @@
   "name": "Vortex-ai-chat",
   "version": "0.1.0",
   "private": true,
-  "author":"vortex-ai-chat"
+  "author":"vortex-ai-chat",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
