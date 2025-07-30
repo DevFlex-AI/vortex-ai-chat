@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { generateSignature, generateUTCTimestamp, decodeToken } from '@/utils/signature'
 import { ErrorType } from '@/constant/errors'
 import { isNull } from 'lodash-es'
+import { createServerClient } from '@supabase/ssr'
 
 const password = process.env.ACCESS_PASSWORD || ''
 const uploadLimit = Number(process.env.NEXT_PUBLIC_UPLOAD_LIMIT || '0')
@@ -12,7 +13,7 @@ const apiRoutes = ['/api/chat', '/api/upload', '/api/models']
 
 // Limit the middleware to paths starting with `/api/`
 export const config = {
-  matcher: '/api/:path*',
+  matcher: ['/api/:path*', '/auth/:path*', '/dashboard/:path*'],
 }
 
 function checkToken(token: string): boolean {
@@ -29,7 +30,39 @@ function checkToken(token: string): boolean {
   return true
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Handle auth routes
+  if (request.nextUrl.pathname.startsWith('/auth/')) {
+    return NextResponse.next()
+  }
+
+  // Handle dashboard routes - require authentication
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.redirect(new URL('/auth/login', request.url))
+    }
+
+    return NextResponse.next()
+  }
+
+  // Handle API routes
   for (const proxyRoute of proxyRoutes) {
     if (request.nextUrl.pathname.startsWith(proxyRoute)) {
       const contentLength = request.headers.get('Content-Length')
